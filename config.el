@@ -32,10 +32,10 @@
 ;; There are two ways to load a theme. Both assume the theme is installed and
 ;; available. You can either set `doom-theme' or manually load a theme with the
 ;; `load-theme' function. This is the default:
-(setq doom-theme 'catppuccin)
+(setq doom-theme 'doom-tokyo-night)
 
 ;; Font size
-(setq doom-font (font-spec :size 20))
+(setq doom-font (font-spec :family "JetBrainsMono Nerd Font" :size 20))
 
 ;; This determines the style of line numbers in effect. If set to `nil', line
 ;; numbers are disabled. For relative line numbers, set this to `relative'.
@@ -50,7 +50,7 @@
 ;; change `org-directory'. It must be set before org loads!
 (setq org-directory "~/Orgs/")
 
-
+(marginalia-mode t)
 ;; Whenever you reconfigure a package, make sure to wrap your config in an
 ;; `after!' block, otherwise Doom's defaults may override your settings. E.g.
 ;;
@@ -111,9 +111,9 @@
 
 (after! lsp-ui
   (setq lsp-ui-doc-enable t           ; 启用文档悬浮
-        lsp-ui-doc-position 'at-point
+        lsp-ui-doc-position 'float
         lsp-ui-doc-delay 0.5           ; 延迟显示时间
-        lsp-ui-doc-max-height 20       ; 最大高度
+        lsp-ui-doc-max-height 40       ; 最大高度
         lsp-ui-doc-max-width 120))
 
 (setq lsp-idle-delay 0.5)
@@ -126,7 +126,7 @@
   (setq rustic-rustfmt-path "rustfmt")
   (setq rustic-cargo-path "cargo")
   (setq rustic-lsp-server 'rust-analyzer)  ; 明确指定 LSP 服务器
-  ; (setq rustic-format-on-save t)
+                                        ; (setq rustic-format-on-save t)
   ;; LSP 配置
   (add-hook 'rustic-mode-hook #'lsp-deferred))  ; 延迟启动 LSP
 ;;
