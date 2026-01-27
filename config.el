@@ -3,7 +3,6 @@
 ;; Place your private configuration here! Remember, you do not need to run 'doom
 ;; sync' after modifying this file!
 
-
 ;; Some functionality uses this to identify you, e.g. GPG configuration, email
 ;; clients, file templates and snippets. It is optional.
 ;; (setq user-full-name "John Doe"
@@ -35,7 +34,7 @@
 (setq doom-theme 'doom-tokyo-night)
 
 ;; Font size
-(setq doom-font (font-spec :family "JetBrainsMono Nerd Font" :size 20))
+(setq doom-font (font-spec :family "Maple Mono NF CN" :size 20))
 
 ;; This determines the style of line numbers in effect. If set to `nil', line
 ;; numbers are disabled. For relative line numbers, set this to `relative'.
@@ -83,7 +82,15 @@
   (setq org-startup-with-inline-images t)
   ;; more format and zoom
   (setq org-image-actual-width nil)
-  (setq org-display-remote-inline-images 'download))
+  (setq org-display-remote-inline-images 'download)
+  ;; Enable corfu in org-mode
+  (add-hook 'org-mode-hook #'corfu-mode)
+
+  ;; Better completion settings for Org
+  (setq org-completion-use-ish t)  ; Fuzzy completion for tags/properties
+
+  ;; Optional: Enable specific completions
+  (setq org-use-property-inheritance t))
 (add-hook 'org-mode-hook #'org-display-inline-images)
 ;;
 ;; ;; Set up super-save
@@ -96,9 +103,21 @@
    super-save-remote-files nil
    super-save-triggers '(focus-out-hook switch-buffer-hook)))
 ;;
-;; ;; Set up company
-(setq company-idle-delay 0.2)
-(setq company-minimum-prefix-length 1)
+;; ;; Set up corfu
+(after! corfu
+  (setq corfu-auto t
+        corfu-auto-prefix 2
+        corfu-auto-delay 0.2
+        corfu-cycle t
+        corfu-quit-at-boundary 'separator
+        corfu-quit-no-match 'separator
+        corfu-preview-current t
+        corfu-preselect 'prompt
+        corfu-on-exact-match nil
+        corfu-popupinfo-delay '(0.5 . 0.2))
+  (global-corfu-mode 1)
+  (corfu-popupinfo-mode 1))
+
 ;;
 ;; ===================
 ;; LSP Configurations
@@ -106,46 +125,90 @@
 ;;
 ;; Generic LSP setup
 (after! lsp-mode
-  (setq lsp-inlay-hint-enable t)
-  (add-hook! 'lsp-mode-hook #'lsp-inlay-hints-mode))
+  (setq lsp-inlay-hint-enable t
+        lsp-idle-delay 0.5
+        lsp-completion-provider :capf
+        lsp-auto-guess-root nil
+        lsp-enable-folding nil
+        lsp-enable-snippet nil
+        lsp-enable-symbol-highlighting nil
+        lsp-enable-text-document-color nil
+        lsp-completion-enable-additional-text-edit nil
+        ;; Fix content modified errors
+        lsp-enable-file-watchers nil
+        lsp-response-timeout 10
+        lsp-enable-on-type-formatting nil
+        lsp-enable-file-notifications nil
+        lsp-enable-suggest-on-release-modifiers nil
+        lsp-enable-links nil
+        lsp-keep-workspace-alive nil
+        lsp-restart 'auto-restart
+        +lsp-company-backends nil)
 
-(after! lsp-ui
-  (setq lsp-ui-doc-enable t           ; 启用文档悬浮
-        lsp-ui-doc-position 'float
-        lsp-ui-doc-delay 0.5           ; 延迟显示时间
-        lsp-ui-doc-max-height 40       ; 最大高度
-        lsp-ui-doc-max-width 120))
+  (add-hook! 'lsp-mode-hook #'lsp-inlay-hints-mode)
 
-(setq lsp-idle-delay 0.5)
-(setq lsp-completion-provider :capf)
-;;
-;; ;; Rust LSP setup
-(use-package! rustic
-  :config
-  ;; 设置 rust-analyzer 路径（默认自动查找）
-  (setq rustic-rustfmt-path "rustfmt")
-  (setq rustic-cargo-path "cargo")
-  (setq rustic-lsp-server 'rust-analyzer)  ; 明确指定 LSP 服务器
-                                        ; (setq rustic-format-on-save t)
-  ;; LSP 配置
-  (add-hook 'rustic-mode-hook #'lsp-deferred))  ; 延迟启动 LSP
-;;
-;; ;; Clangd LSP setup
-(after! lsp-mode
+  ;;;; Rust
+  (setq lsp-rust-analyzer-cargo-watch-command "clippy"
+        lsp-rust-analyzer-proc-macro-enable t
+        lsp-rust-analyzer-cargo-load-out-dirs-from-check t
+        lsp-rust-analyzer-import-granularity "module"
+        lsp-rust-analyzer-import-group "std"
+        lsp-rust-analyzer-import-prefix "crate"
+        lsp-rust-analyzer-display-chaining-hints t
+        lsp-rust-analyzer-display-parameter-hints t
+        lsp-rust-all-features t
+        lsp-rust-analyzer-server-display-inlay-hints t)
+
+  ;;;; C/C++
   (add-to-list 'lsp-language-id-configuration
                '(c-mode . "c"))
   (add-to-list 'lsp-language-id-configuration
                '(c++-mode . "cpp"))
 
-  (setq lsp-clients-clangd-executable "clangd")
-  (setq lsp-clients-clangd-args '("--background-index"
+  (setq lsp-clients-clangd-executable "clangd"
+        lsp-clients-clangd-args '("--background-index"
                                   "--clang-tidy"
                                   "--header-insertion=iwyu"
                                   "--log=error"
                                   "--compile-commands-dir=."
-                                  "--completion-style=detailed"))
-  ;; auto format
-  (add-hook 'c-mode-hook #'lsp))
+                                  "--completion-style=detailed"
+                                  "--header-insertion-decorators=0"
+                                  "--header-insertion=never"
+                                  "--pch-storage=memory"
+                                  "-j=4"))
+  ;; auto format and LSP for C/C++
+  (add-hook 'c-mode-hook #'lsp-deferred)
+  (add-hook 'c++-mode-hook #'lsp-deferred)
+
+
+  (after! lsp-ui
+    (setq lsp-ui-doc-enable t           ; 启用文档悬浮
+          lsp-ui-doc-show-with-cursor t
+          lsp-ui-doc-position 'at-point
+          lsp-ui-doc-delay 0.8           ; 延迟显示时间
+          lsp-ui-doc-max-height 40       ; 最大高度
+          lsp-ui-doc-max-width 120
+          lsp-ui-sideline-enable t
+          lsp-ui-sideline-show-diagnostics t
+          lsp-ui-sideline-show-hover t))
+  ;;
+  ;; ;; Rust LSP setup
+  (after! rustic
+    (setq rustic-rustfmt-path "rustfmt"
+          rustic-cargo-path "cargo"
+          rustic-lsp-server 'rust-analyzer
+          rustic-format-on-save nil
+          rustic-cargo-check t
+          ;; Reduce conflicts with LSP
+          rustic-analyzer-command '("rust-analyzer")
+          rustic-format-trigger-marker nil)
+    ;; LSP 配置
+    (add-hook 'rustic-mode-hook #'lsp-deferred))
+
+  (setq lsp-lens-enable nil  ; Disable code lenses if you don't use them
+        lsp-headerline-breadcrumb-enable nil  ; Can be distracting
+        lsp-modeline-code-actions-enable nil))  ; Reduces modeline clutter
+
 ;;
 ;;
 ;; =======================
@@ -155,8 +218,48 @@
 (map! :leader
       "r p" #'consult-ripgrep)
 
-(map! :map company-active-map
-      "TAB" #'company-complete-selection)
+;; Corfu keybindings
+(map! :map corfu-map
+      "TAB" #'corfu-insert
+      "RET" #'corfu-insert
+      "C-n" #'corfu-next
+      "C-p" #'corfu-previous
+      "C-j" #'corfu-next
+      "C-k" #'corfu-previous)
+
+(map! :leader
+      :desc "LSP Format" "c f" #'lsp-format-buffer
+      :desc "LSP Rename" "c r" #'lsp-rename
+      :desc "LSP Actions" "c a" #'lsp-execute-code-action)
+
+;; ===================
+;; Additional Development Settings
+;; ===================
+
+;; Better compilation experience
+(setq compilation-scroll-output 'first-error)
+
+;; Code formatting
+(after! cc-mode
+  (setq c-default-style "linux"
+        c-basic-offset 4))
+
+;; Tree-sitter enhancements
+(after! treesitter
+  (setq treesit-language-source-alist
+        '((rust . ("https://github.com/tree-sitter/tree-sitter-rust"))
+          (c . ("https://github.com/tree-sitter/tree-sitter-c"))
+          (cpp . ("https://github.com/tree-sitter/tree-sitter-cpp")))))
+
+;; DAP (Debug Adapter Protocol) setup for future debugging
+(after! dap-mode
+  (setq dap-auto-configure-features '(breakpoints console))
+  (dap-ui-mode 1)
+  (dap-ui-controls-mode 1)
+
+  ;; Register debuggers
+  (require 'dap-gdb-lldb)
+  (require 'dap-codellens))
 ;;
 ;; To get information about any of these functions/macros, move the cursor over
 ;; the highlighted symbol at press 'K' (non-evil users must press 'C-c c k').
