@@ -58,3 +58,5 @@
 (package! nov)
 
 (package! eldoc-box)
+
+(package! super-save)
