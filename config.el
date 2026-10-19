@@ -36,11 +36,10 @@
 ;; Font size
 (setq doom-font (font-spec :family "Maple Mono NF CN" :size 20))
 
-;; 隐藏窗口标题栏（GNOME/GTK 下的窗口装饰）
-;; 用 `undecorated-round' 可保留圆角，去掉下面这行则用直角。
+;; hide the title at the top
 (add-to-list 'default-frame-alist '(undecorated-round . t))
 (add-to-list 'default-frame-alist '(undecorated . t))
-;; 对已经存在的 frame 立即生效（config.el 加载时首帧可能已创建）
+
 (when (display-graphic-p)
   (set-frame-parameter nil 'undecorated-round t)
   (set-frame-parameter nil 'undecorated t))
@@ -117,13 +116,12 @@
 (use-package! super-save
   :demand t
   :config
-  ;; 注意：这些变量必须在 `super-save-mode' 之前设置，
-  ;; 因为 idle 定时器是在启用模式时根据它们创建的。
+
   (setq super-save-auto-save-when-idle t    ; 空闲时自动保存
         super-save-idle-duration 10         ; 空闲 10 秒后保存
-        super-save-when-focus-lost t        ; 窗口失焦（鼠标移出/切到别的程序）时保存
+        super-save-when-focus-lost t        ; 鼠标移出时保存
         super-save-when-buffer-switched t   ; 切换 buffer 时保存
-        super-save-silent t                 ; 静默保存，不刷回显区
+        super-save-silent t                 ; 静默保存
         super-save-remote-files nil         ; 不自动保存 TRAMP 远程文件
         super-save-exclude '("\\.gpg$" "\\.age$")) ; 排除加密文件
   (super-save-mode +1))
@@ -308,3 +306,69 @@
 ;;
 ;; You can also try 'gd' (or 'C-c c d') to jump to their definition and see how
 ;; they are implemented.
+
+;;; ---------------------------------------------------------------------------
+;;; agent-shell + Pi
+;;; ---------------------------------------------------------------------------
+;;
+;;  Emacs(agent-shell)  <-- ACP -->  pi-acp  <-- RPC -->  pi
+;;
+;;     ~/.pi/agent/auth.json      <- API key
+;;     ~/.pi/agent/settings.json  <- models, themes
+;;     ~/.pi/agent/models-store.json <- custom provider / models list
+;; 启动方式：
+;;   C-c A a  OR
+;;   C-c A p
+;; ---------------------------------------------------------------------------
+(use-package! agent-shell
+  :commands (agent-shell
+             agent-shell-pi-start-agent
+             agent-shell-switch-buffer
+             agent-shell-send-region
+             agent-shell-send-dwim
+             agent-shell-send-file
+             agent-shell-help-menu)
+  :config
+
+  (setq agent-shell-pi-acp-command
+        (list (expand-file-name "~/.local/bin/pi-acp")))
+
+  ;; custom API：
+  ;;   (setq agent-shell-pi-environment
+  ;;         (agent-shell-make-environment-variables
+  ;;          "ANTHROPIC_API_KEY" "sk-ant-..."
+  ;;          :inherit-env t))
+  (setq agent-shell-pi-environment
+        (agent-shell-make-environment-variables :inherit-env t))
+
+  ;;   'new     每次都新建会话
+  ;;   'latest  自动恢复该项目最近一次会话
+  ;;   'prompt  每次提示选择
+  (setq agent-shell-session-strategy 'new)
+
+  ;; 让 `M-x agent-shell` / C-c A a 默认选择 Pi（'pi 是 Pi 配置的 identifier）。
+  ;; 若想换成 Claude/Codex 等，改成对应的 identifier。
+  (setq agent-shell-preferred-agent-config 'pi)
+
+  ;; 误发消息时的即时补救（见 KEYBINDINGS.md 第 7 节）：
+  ;;   * 正在执行中 -> C-c C-c（agent-shell-interrupt）中断当前回合；
+  ;;     默认会先问 "Interrupt?"，想一键直接中断可取消注释下面这行。
+  ;; (setq agent-shell-confirm-interrupt nil)
+  ;;   * 只是排队（agent 忙时按 RET 会把消息排队）-> C-c C-k 清空排队消息，
+  ;;     或在多个排队消息里选一条删除。
+  (map! :map agent-shell-mode-map
+        :desc "Remove queued prompts" "C-c C-k" #'agent-shell-prompt-queue-remove))
+
+;; --- agent-shell 快捷键（见 KEYBINDINGS.md）---
+(map! :leader
+      (:prefix-map ("A" . "agent")
+       ;; 启动 / 切换
+       :desc "Start agent shell (Pi by default)" "a" #'agent-shell
+       :desc "Start Pi agent shell"              "p" #'agent-shell-pi-start-agent
+       :desc "Switch agent shell buffer"         "b" #'agent-shell-switch-buffer
+       ;; 把上下文发给 agent（会自动定位到最近使用的 agent-shell）
+       :desc "Send region to agent"              "s" #'agent-shell-send-region
+       :desc "Send region/error at point"        "d" #'agent-shell-send-dwim
+       :desc "Send current file to agent"        "f" #'agent-shell-send-file
+       ;; 帮助
+       :desc "Agent shell help menu"             "h" #'agent-shell-help-menu))

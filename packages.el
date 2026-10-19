@@ -60,3 +60,8 @@
 (package! eldoc-box)
 
 (package! super-save)
+
+;; --- agent-shell（ACP）---
+(package! acp)
+(package! shell-maker)
+(package! agent-shell)

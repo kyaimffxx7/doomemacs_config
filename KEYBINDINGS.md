@@ -2,7 +2,7 @@
 
 > 基于本机配置 `~/.config/doom`（`init.el` / `config.el`）整理。
 >
-> **重要：本配置没有启用 evil**（`;;evil +everywhere` 被注释），所以：
+> **重要：本配置没有启用 evil**：
 >
 > - 普通编辑使用原生 Emacs 按键；
 > - `<leader>` = `C-c`
@@ -11,7 +11,7 @@
 
 ---
 
-## 1. 你自定义的快捷键（config.el）
+## 1. 自定义的快捷键（config.el）
 
 | 快捷键 | 命令 | 说明 |
 | --- | --- | --- |
@@ -517,3 +517,72 @@
 - **config**: `default +bindings +smartparens`
 
 > 未启用 evil，所以没有 `SPC`/`g`/`z` 等 Vim 风格按键。
+
+---
+
+## 7. agent-shell + Pi（AI 编码 agent）
+
+`agent-shell` 通过 ACP 协议驱动 Pi（需要 `pi-acp` 适配器，见 config.el 顶部注释）。
+
+### 全局前缀 `C-c A`（Agent，大写 A）
+
+| 快捷键 | 命令 | 说明 |
+| --- | --- | --- |
+| `C-c A a` | `agent-shell` | 启动 agent-shell（默认使用 Pi；会复用当前项目的 shell） |
+| `C-c A p` | `agent-shell-pi-start-agent` | 明确启动一个 Pi shell |
+| `C-c A b` | `agent-shell-switch-buffer` | 在多个 agent-shell 缓冲间切换 |
+| `C-c A s` | `agent-shell-send-region` | 把选区发送到最近使用的 agent shell |
+| `C-c A d` | `agent-shell-send-dwim` | 发送选区 / 光标处的错误（DWIM） |
+| `C-c A f` | `agent-shell-send-file` | 把当前文件发送给 agent |
+| `C-c A h` | `agent-shell-help-menu` | agent-shell 命令菜单（transient） |
+
+### agent-shell 缓冲内（`agent-shell-mode-map`）
+
+| 快捷键 | 命令 | 说明 |
+| --- | --- | --- |
+| `RET` | `agent-shell-submit` | 发送输入（agent 忙时排队） |
+| `M-RET` | `agent-shell-submit-override` | 忙时插话（steer） |
+| `S-RET` | `agent-shell-newline` | 输入换行 |
+| `C-c C-c` | `agent-shell-interrupt` | 中断当前任务（默认会先问 `Interrupt?`） |
+| `C-c C-k` | `agent-shell-prompt-queue-remove` | 删除排队中的提示（误发时用；可选择删一条或全删） |
+| `C-c C-o` | `agent-shell-other-buffer` | 打开/返回 viewport（单条对话编辑视图） |
+| `C-c C-v` | `agent-shell-set-session-model` | 切换模型 |
+| `C-c C-m` | `agent-shell-set-session-mode` | 切换 session mode |
+| `C-c C-t` | `agent-shell-set-session-thought-level` | 设置思考等级 |
+| `C-c C-s` | `agent-shell-set-session-config-option` | 设置其它会话选项 |
+| `C-<tab>` | `agent-shell-cycle-session-mode` | 循环切换 session mode |
+| `n` / `TAB` | `agent-shell-next-item` | 下一个块 |
+| `p` / `<backtab>` | `agent-shell-previous-item` | 上一个块 |
+| `r` | `agent-shell-quote-region` | 引用选区到输入框 |
+| `M-p` / `M-n` | 输入历史 | 上一条 / 下一条历史输入 |
+| `C-<up>` / `C-<down>` | 输入历史 | 同上 |
+
+> **误发消息怎么办？**
+> 1. 正在执行/刚开始执行：`C-c C-c` 中断（首次会问 `Interrupt?`，回车确认）；
+>    想跳过确认：`(setq agent-shell-confirm-interrupt nil)`。
+> 2. 只是排队（agent 忙时按 `RET` 会把消息排队）：`C-c C-k` 清空排队消息，
+>    或 `M-x agent-shell-prompt-queue-remove` 选择删除某一条。
+> 3. 已经完全执行完：对话无法“撤回”，用 `git diff` / `undo` 回滚文件改动；
+>    想清空整个对话用 `M-x agent-shell-restart`（同目录开新会话）。
+> 4. 注意：中断只是让 Pi 停止继续干活，之前已经执行的写文件/命令不会自动回滚。
+
+### viewport 额外按键
+
+| 快捷键 | 说明 |
+| --- | --- |
+| `r` | 回复 |
+| `R` | 引用回复 |
+| `b` / `f` | 上一条 / 下一条交互 |
+| `C-c C-c` | 发送（编辑模式） |
+| `C-c C-k` | 取消（编辑模式） |
+| `q` | 关闭 viewport |
+| `?` | 帮助 |
+
+### 配置文件位置（不在 Emacs 里）
+
+| 文件 | 用途 |
+| --- | --- |
+| `~/.pi/agent/auth.json` | API key / OAuth 凭据（`pi` 里 `/login`，或 `pi auth`） |
+| `~/.pi/agent/settings.json` | 默认 provider / model、主题等 |
+| `~/.pi/agent/models-store.json` | 自定义 provider / 模型列表 |
+| `~/.local/bin/pi-acp` | agent-shell ↔ Pi 的 ACP 适配器（npm 安装） |
